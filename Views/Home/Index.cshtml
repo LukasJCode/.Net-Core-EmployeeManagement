@@ -19,7 +19,7 @@
                         <img class="card-img-top" src=@photoPath alt="Alternate Text" asp-append-version="true" />
                         <div class="card-footer text-center">
                             <a asp-controller="home" asp-action="details" asp-route-id="@Employee.Id" class="btn btn-primary">View</a>
-                            <a href="#" class="btn btn-primary">Edit</a>
+                            <a asp-controller="home" asp-action="edit" asp-route-id="@Employee.Id" class="btn btn-primary">Edit</a>
                             <a href="#" class="btn btn-danger">Delete</a>
                         </div>
                     </div>
