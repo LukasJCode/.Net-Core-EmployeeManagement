@@ -1,4 +1,6 @@
 using EmployeeManagement.Models;
+using EmployeeManagement.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -8,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -40,6 +43,12 @@ namespace EmployeeManagement
 
 			services.AddMvc(options => options.EnableEndpointRouting = false).AddXmlDataContractSerializerFormatters();
 
+			services.AddAuthentication().AddGoogle(options =>
+			{
+				options.ClientId = "174699290088-32hkcukqd193ja61547omsm24nru5uvv.apps.googleusercontent.com";
+				options.ClientSecret = "ZIBCZMoGKMvrkytk55EixmHD";
+			});
+
 			services.ConfigureApplicationCookie(options =>
 			{
 				options.AccessDeniedPath = new PathString("/Administration/AccessDenied"); 
@@ -48,11 +57,16 @@ namespace EmployeeManagement
 			services.AddAuthorization(options =>
 			{
 				options.AddPolicy("DeleteRolePolicy", policy => policy.RequireClaim("Delete Role"));
-				
-				options.AddPolicy("EditRolePolicy", policy => policy.RequireClaim("Edit Role", "true"));
+
+				options.AddPolicy("EditRolePolicy", policy =>
+				policy.AddRequirements(new ManageAdminRolesAndClaimsRequirement()));
 			});
 
+			
+
 			services.AddScoped<IEmployeeRepository, SQLEmployeeRepository>();
+			services.AddSingleton<IAuthorizationHandler, CanEditOnlyOtherAdminRolesAndClaimsHandler>();
+			services.AddSingleton<IAuthorizationHandler, SuperAdminHandler>();
 		}
 
 		// This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
