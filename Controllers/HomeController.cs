@@ -1,6 +1,8 @@
 ﻿using EmployeeManagement.Models;
+using EmployeeManagement.Security;
 using EmployeeManagement.ViewModels;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -18,24 +20,32 @@ namespace EmployeeManagement.Controllers
 		private readonly IEmployeeRepository _employeeRepository;
 		private readonly IHostingEnvironment hostingEnvironment;
 		private readonly ILogger logger;
+		private readonly IDataProtector protector;
 
-		public HomeController(IEmployeeRepository employeeRepository, IHostingEnvironment hostingEnvironment, ILogger<HomeController> logger)
+		public HomeController(IEmployeeRepository employeeRepository, IHostingEnvironment hostingEnvironment,
+			ILogger<HomeController> logger, IDataProtectionProvider dataProtectionProvider,
+			DataProtectionPurposeStrings dataProtectionPurposeStrings)
 		{
 			_employeeRepository = employeeRepository;
 			this.hostingEnvironment = hostingEnvironment;
 			this.logger = logger;
+			protector = dataProtectionProvider.CreateProtector(dataProtectionPurposeStrings.EmployeeRouteValue);
 		}
 
 		[AllowAnonymous]
 		public ViewResult Index()
 		{
-			var model = _employeeRepository.GetAllEmployees();
+			var model = _employeeRepository.GetAllEmployees().Select(e =>
+			{
+				e.EncryptedId = protector.Protect(e.Id.ToString());
+				return e;
+			});
 			return View(model);
 		}
 
 		[AllowAnonymous]
 		[Route("Home/Details/{id=1}")]
-		public ViewResult Details(int id)
+		public ViewResult Details(string id)
 		{
 			//throw new Exception("Error in Details View");
 			logger.LogTrace("Trace Log");
@@ -45,12 +55,14 @@ namespace EmployeeManagement.Controllers
 			logger.LogError("Error Log");
 			logger.LogCritical("Critical Log");
 
-			Employee employee = _employeeRepository.GetEmployee(id);
+			int employeeId = Convert.ToInt32(protector.Unprotect(id));
+
+			Employee employee = _employeeRepository.GetEmployee(employeeId);
 
 			if(employee == null)
 			{
 				Response.StatusCode = 404;
-				return View("EmployeeNotFound", id);
+				return View("EmployeeNotFound", employeeId);
 			}
 
 			HomeDetailsViewModel homeDetailsViewModel = new HomeDetailsViewModel()
